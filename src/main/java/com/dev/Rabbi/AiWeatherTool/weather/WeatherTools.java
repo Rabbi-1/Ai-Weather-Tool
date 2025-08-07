@@ -73,17 +73,17 @@ public class WeatherTools {
                 .retrieve()
                 .body(Points.class);
 
+        assert points != null;
         var forecast = restClient.get().uri(points.properties().forecast()).retrieve().body(Forecast.class);
 
-        String forecastText = forecast.properties().periods().stream().map(p -> {
-            return String.format("""
-					%s:
-					Temperature: %s %s
-					Wind: %s %s
-					Forecast: %s
-					""", p.name(), p.temperature(), p.temperatureUnit(), p.windSpeed(), p.windDirection(),
-                    p.detailedForecast());
-        }).collect(Collectors.joining());
+        assert forecast != null;
+        String forecastText = forecast.properties().periods().stream().map(p -> String.format("""
+                %s:
+                Temperature: %s %s
+                Wind: %s %s
+                Forecast: %s
+                """, p.name(), p.temperature(), p.temperatureUnit(), p.windSpeed(), p.windDirection(),
+                p.detailedForecast())).collect(Collectors.joining());
 
         return forecastText;
     }
@@ -92,6 +92,7 @@ public class WeatherTools {
     public String getAlerts(@ToolParam( description =  "Two-letter US state code (e.g. CA, NY") String state) {
         Alert alert = restClient.get().uri("/alerts/active/area/{state}", state).retrieve().body(Alert.class);
 
+        assert alert != null;
         return alert.features()
                 .stream()
                 .map(f -> String.format("""
