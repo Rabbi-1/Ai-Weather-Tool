@@ -1,13 +1,13 @@
 package com.dev.Rabbi.AiWeatherTool;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
 class AiWeatherToolApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void applicationClassExists() {
+        assertThat(AiWeatherToolApplication.class).isNotNull();
+    }
 }

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyCast Weather</title>
+  <style>
+    :root{--bg1:#eef7ff;--bg2:#dcecff;--surface:rgba(255,255,255,.8);--strong:#fff;--line:rgba(74,111,154,.14);--text:#20344a;--muted:#6a839d;--accent:#5da8ff;--deep:#3878d8;--error:#c74b46;--errorbg:#fff1ef;--shadow:0 18px 45px rgba(79,117,166,.16);--r1:32px;--r2:22px;--r3:16px}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:"Segoe UI",Tahoma,sans-serif;color:var(--text);background:radial-gradient(circle at top left,rgba(93,168,255,.2),transparent 25%),linear-gradient(180deg,var(--bg1),var(--bg2));padding:24px}
+    .page{width:min(1120px,100%);margin:0 auto;display:grid;gap:22px}
+    .panel,.day{background:var(--surface);backdrop-filter:blur(16px);border:1px solid var(--line);box-shadow:var(--shadow)}
+    .eyebrow{margin:0 0 10px;color:var(--deep);text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:700}
+    .layout{display:grid;gap:22px}
+    .panel{border-radius:var(--r1);padding:26px}
+    .search-wrap{max-width:760px;margin:0 auto;text-align:center}
+    .search{display:flex;gap:12px;margin-top:18px}.search input{flex:1}
+    input,button{font:inherit}input{border:1px solid var(--line);background:var(--strong);border-radius:999px;padding:16px 18px;color:var(--text)}
+    button{border:none;cursor:pointer}.search button{padding:15px 22px;border-radius:999px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--deep));font-weight:700}
+    input:focus,button:focus,.chip:focus{outline:2px solid rgba(93,168,255,.35);outline-offset:2px}
+    .muted{margin:14px 0 0;color:var(--muted);font-size:.95rem}.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    .chip{padding:10px 14px;border-radius:999px;background:#edf5ff;color:var(--deep)}
+    .current{margin-top:24px;padding:18px;border-radius:var(--r2);background:linear-gradient(160deg,rgba(93,168,255,.18),rgba(255,255,255,.72));border:1px solid rgba(93,168,255,.18)}
+    .current.loading{animation:pulse 1.2s ease-in-out infinite}
+    .top{display:flex;justify-content:space-between;gap:16px;align-items:start}.label{color:var(--muted);font-size:.9rem;text-transform:uppercase;letter-spacing:.1em}
+    .city{margin:0;font-size:clamp(1.6rem,3.2vw,2.5rem)}.condition{margin:6px 0 0;color:var(--muted)}
+    .icon{width:74px;height:74px;display:grid;place-items:center;border-radius:22px;background:rgba(255,255,255,.58);font-size:2.2rem}
+    .temp-row{display:flex;align-items:end;gap:10px;margin:16px 0 14px}.temp{font-size:clamp(3.1rem,6vw,4.8rem);line-height:.9;font-weight:700}.feels{padding-bottom:8px;color:var(--muted)}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric{padding:14px;border-radius:var(--r3);background:rgba(255,255,255,.58)}.metric div:first-child{color:var(--muted);font-size:.82rem;margin-bottom:6px}.metric div:last-child{font-size:1.05rem;font-weight:700}
+    .status{margin-top:16px;padding:14px 16px;border-radius:16px;font-size:.95rem}.hidden{display:none}.loading-note{background:#eef5ff;color:#4d6f95}.error{background:var(--errorbg);color:var(--error)}
+    .forecast-panel{text-align:center}
+    .forecast-head h2{margin:0;font-size:1.4rem}.forecast-head p{margin:8px 0 0;color:var(--muted);line-height:1.6}
+    .forecast{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:18px}.day{border-radius:20px;padding:18px 14px;text-align:center}.day strong{display:block;margin-bottom:10px}.day .mini-icon{font-size:1.9rem;margin-bottom:10px}.day .mini-temp{font-size:1.15rem;font-weight:700}.day .mini-cond{margin-top:8px;color:var(--muted);font-size:.92rem}
+    @keyframes pulse{0%{opacity:.8}50%{opacity:1}100%{opacity:.8}}
+    @media (max-width:920px){.layout{grid-template-columns:1fr}.forecast{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:640px){body{padding:14px}.panel{padding:20px}.search,.top,.temp-row{flex-direction:column;align-items:stretch}.search button,input{width:100%}.metrics,.forecast{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="layout">
+      <section class="panel">
+        <div class="search-wrap">
+          <p class="eyebrow">Search</p>
+          <h2>Find a city</h2>
+          <p class="muted">Enter a city name to preview the UI with mock weather data.</p>
+          <form id="weather-form">
+            <div class="search">
+              <input id="city-input" type="text" placeholder="Enter a city name" value="New York">
+              <button type="submit">Search</button>
+            </div>
+          </form>
+          <p class="muted">Try: New York, London, Tokyo, Sydney</p>
+          <div class="chips">
+            <button class="chip" type="button" data-city="New York">New York</button>
+            <button class="chip" type="button" data-city="London">London</button>
+            <button class="chip" type="button" data-city="Tokyo">Tokyo</button>
+            <button class="chip" type="button" data-city="Sydney">Sydney</button>
+          </div>
+        </div>
+
+        <section id="current" class="current">
+          <div class="top">
+            <div>
+              <div class="label">Current Weather</div>
+              <h2 id="city-name" class="city">New York</h2>
+              <p id="condition" class="condition">Partly Cloudy</p>
+            </div>
+            <div id="icon" class="icon">⛅</div>
+          </div>
+          <div class="temp-row">
+            <div id="temp" class="temp">24°</div>
+            <div id="feels" class="feels">Feels like 26°</div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><div>Humidity</div><div id="humidity">62%</div></div>
+            <div class="metric"><div>Wind Speed</div><div id="wind">14 km/h</div></div>
+            <div class="metric"><div>Condition</div><div id="short">Mild</div></div>
+          </div>
+          <div id="status" class="status hidden"></div>
+        </section>
+      </section>
+
+      <section class="panel forecast-panel">
+        <div class="forecast-head">
+          <p class="eyebrow">5-Day Forecast</p>
+          <h2>This Week</h2>
+          <p>Mock forecast cards designed for future API data.</p>
+        </div>
+        <div id="forecast" class="forecast"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const mockWeather={
+      "new york":{city:"New York",temperature:"24°",feelsLike:"Feels like 26°",condition:"Partly Cloudy",short:"Mild",humidity:"62%",wind:"14 km/h",icon:"⛅",forecast:[["Mon","⛅","24°","Clouds"],["Tue","☀️","27°","Sunny"],["Wed","🌦️","22°","Showers"],["Thu","🌤️","25°","Bright"],["Fri","🌧️","21°","Rain"]]},
+      "london":{city:"London",temperature:"18°",feelsLike:"Feels like 17°",condition:"Light Rain",short:"Rainy",humidity:"74%",wind:"11 km/h",icon:"🌧️",forecast:[["Mon","🌧️","18°","Rain"],["Tue","🌥️","19°","Cloudy"],["Wed","🌤️","20°","Bright"],["Thu","🌦️","17°","Showers"],["Fri","☁️","18°","Grey"]]},
+      "tokyo":{city:"Tokyo",temperature:"29°",feelsLike:"Feels like 31°",condition:"Sunny",short:"Warm",humidity:"58%",wind:"9 km/h",icon:"☀️",forecast:[["Mon","☀️","29°","Sunny"],["Tue","🌤️","28°","Clear"],["Wed","⛅","27°","Clouds"],["Thu","🌦️","25°","Showers"],["Fri","☀️","30°","Sunny"]]},
+      "sydney":{city:"Sydney",temperature:"21°",feelsLike:"Feels like 20°",condition:"Clear Sky",short:"Clear",humidity:"49%",wind:"16 km/h",icon:"🌤️",forecast:[["Mon","🌤️","21°","Clear"],["Tue","☀️","23°","Sunny"],["Wed","⛅","22°","Clouds"],["Thu","🌬️","19°","Windy"],["Fri","🌤️","20°","Bright"]]}
+    };
+
+    const form=document.getElementById("weather-form");
+    const cityInput=document.getElementById("city-input");
+    const cityName=document.getElementById("city-name");
+    const condition=document.getElementById("condition");
+    const temp=document.getElementById("temp");
+    const feels=document.getElementById("feels");
+    const humidity=document.getElementById("humidity");
+    const wind=document.getElementById("wind");
+    const short=document.getElementById("short");
+    const icon=document.getElementById("icon");
+    const forecast=document.getElementById("forecast");
+    const status=document.getElementById("status");
+    const current=document.getElementById("current");
+
+    function renderForecast(items){
+      forecast.innerHTML=items.map(([day,emoji,t,cond])=>`<article class="day"><strong>${day}</strong><div class="mini-icon">${emoji}</div><div class="mini-temp">${t}</div><div class="mini-cond">${cond}</div></article>`).join("");
+    }
+
+    function renderWeather(data){
+      cityName.textContent=data.city;condition.textContent=data.condition;temp.textContent=data.temperature;
+      feels.textContent=data.feelsLike;humidity.textContent=data.humidity;wind.textContent=data.wind;
+      short.textContent=data.short;icon.textContent=data.icon;renderForecast(data.forecast);
+    }
+
+    function showStatus(message,type){
+      status.textContent=message;
+      status.className=`status ${type}`;
+    }
+
+    function clearStatus(){
+      status.textContent="";
+      status.className="status hidden";
+    }
+
+    function searchCity(value){
+      const query=value.trim().toLowerCase();
+      if(!query){showStatus("Please enter a city name to see the weather.","error");return}
+      current.classList.add("loading");
+      showStatus("Loading mock weather data...","loading-note");
+      setTimeout(()=>{
+        current.classList.remove("loading");
+        const result=mockWeather[query];
+        if(!result){showStatus("Sorry, that city is not in the mock data yet. Try New York, London, Tokyo, or Sydney.","error");return}
+        clearStatus();
+        renderWeather(result);
+      },700);
+    }
+
+    form.addEventListener("submit",(event)=>{event.preventDefault();searchCity(cityInput.value)});
+    document.querySelectorAll(".chip").forEach((chip)=>chip.addEventListener("click",()=>{cityInput.value=chip.dataset.city;searchCity(chip.dataset.city)}));
+    renderWeather(mockWeather["new york"]);
+  </script>
+</body>
+</html>
